@@ -1,0 +1,18 @@
+# Build context excludes — keeps the image small & build fast.
+src/node_modules
+src/vendor
+src/.git
+src/.idea
+src/.vscode
+src/storage/logs/*.log
+src/storage/framework/cache/data
+src/storage/framework/sessions
+src/storage/framework/views
+src/storage/framework/testing
+src/public/hot
+src/public/build
+src/.phpunit.result.cache
+src/npm-debug.log
+src/yarn-error.log
+**/.DS_Store
+**/Thumbs.db

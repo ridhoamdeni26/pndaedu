@@ -1,0 +1,126 @@
+# =============================================================================
+#  PandaEducation - Development Stack
+#
+#  Services:
+#    - app       Laravel + Vite (php artisan serve  +  npm run dev)
+#    - postgres  Database
+#    - redis     Cache / sessions / queue
+#
+#  Usage:
+#    docker compose up --build       # first time / after Dockerfile change
+#    docker compose up               # normal start
+#    docker compose down             # stop & remove containers
+#    docker compose logs -f app      # follow app logs
+#    docker compose exec app bash    # shell into the app container
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Laravel + Inertia React (dev)
+  # ---------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: pandaeducation/app:dev
+    container_name: pandaeducation-app
+    restart: unless-stopped
+    tty: true
+    stdin_open: true
+    working_dir: /var/www/html
+    ports:
+      - "${APP_PORT:-8000}:8000"   # Laravel  (php artisan serve)
+      - "${VITE_PORT:-5173}:5173"  # Vite HMR (npm run dev)
+    volumes:
+      # Mount source so changes on host reflect inside the container instantly.
+      - ./src:/var/www/html
+      # Keep node_modules and vendor inside named volumes for performance
+      # on Windows/macOS bind mounts. Comment these out if you want them on host.
+      - app_vendor:/var/www/html/vendor
+      - app_node_modules:/var/www/html/node_modules
+    environment:
+      # Container-side overrides (these win over .env values inside Laravel)
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-pandaeducation}
+      DB_USERNAME: ${DB_USERNAME:-panda}
+      DB_PASSWORD: ${DB_PASSWORD:-panda_secret}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_CLIENT: phpredis
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      QUEUE_CONNECTION: redis
+      APP_ENV: ${APP_ENV:-local}
+      APP_DEBUG: ${APP_DEBUG:-true}
+      APP_URL: ${APP_URL:-http://localhost:8000}
+      VITE_PORT: 5173
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - pandanet
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: pandaeducation-postgres
+    restart: unless-stopped
+    ports:
+      - "${DB_PORT_HOST:-5432}:5432"
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-pandaeducation}
+      POSTGRES_USER: ${DB_USERNAME:-panda}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-panda_secret}
+      TZ: Asia/Jakarta
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-panda} -d ${DB_DATABASE:-pandaeducation}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - pandanet
+
+  # ---------------------------------------------------------------------------
+  # Redis
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: pandaeducation-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT_HOST:-6379}:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - pandanet
+
+# -----------------------------------------------------------------------------
+# Networks & volumes
+# -----------------------------------------------------------------------------
+networks:
+  pandanet:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  app_vendor:
+    driver: local
+  app_node_modules:
+    driver: local
