@@ -2,21 +2,21 @@
 #  PandaEducation - Development Stack
 #
 #  Services:
-#    - app       Laravel + Vite (php artisan serve  +  npm run dev)
+#    - app       Laravel + Vite + Octane FrankenPHP (HTTP)
 #    - postgres  Database
 #    - redis     Cache / sessions / queue
 #
 #  Usage:
-#    docker compose up --build       # first time / after Dockerfile change
-#    docker compose up               # normal start
-#    docker compose down             # stop & remove containers
-#    docker compose logs -f app      # follow app logs
-#    docker compose exec app bash    # shell into the app container
+#    docker compose up --build        # first run / after Dockerfile change
+#    docker compose up                # normal start
+#    docker compose down              # stop containers
+#    docker compose logs -f app       # follow app logs
+#    docker compose exec app bash     # shell into app container
 # =============================================================================
 
 services:
   # ---------------------------------------------------------------------------
-  # Laravel + Inertia React (dev)
+  # Laravel + Inertia React + Octane FrankenPHP
   # ---------------------------------------------------------------------------
   app:
     build:
@@ -29,33 +29,38 @@ services:
     stdin_open: true
     working_dir: /var/www/html
     ports:
-      - "${APP_PORT:-8000}:8000"   # Laravel  (php artisan serve)
-      - "${VITE_PORT:-5173}:5173"  # Vite HMR (npm run dev)
+      - "${APP_PORT:-80}:80"        # Laravel (Octane FrankenPHP) → http://pandaeducation.test
+      - "${VITE_PORT:-5173}:5173"   # Vite HMR
     volumes:
-      # Mount source so changes on host reflect inside the container instantly.
       - ./src:/var/www/html
-      # Keep node_modules and vendor inside named volumes for performance
-      # on Windows/macOS bind mounts. Comment these out if you want them on host.
       - app_vendor:/var/www/html/vendor
       - app_node_modules:/var/www/html/node_modules
     environment:
-      # Container-side overrides (these win over .env values inside Laravel)
+      # ----- Database -------------------------------------------------------
       DB_CONNECTION: pgsql
       DB_HOST: postgres
       DB_PORT: 5432
       DB_DATABASE: ${DB_DATABASE:-pandaeducation}
       DB_USERNAME: ${DB_USERNAME:-panda}
       DB_PASSWORD: ${DB_PASSWORD:-panda_secret}
+      # ----- Redis ----------------------------------------------------------
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_CLIENT: phpredis
       CACHE_STORE: redis
       SESSION_DRIVER: redis
       QUEUE_CONNECTION: redis
+      # ----- App ------------------------------------------------------------
       APP_ENV: ${APP_ENV:-local}
       APP_DEBUG: ${APP_DEBUG:-true}
-      APP_URL: ${APP_URL:-http://localhost:8000}
-      VITE_PORT: 5173
+      APP_URL: ${APP_URL:-http://pandaeducation.test}
+      VITE_PORT: ${VITE_PORT:-5173}
+      # ----- File watching (Windows + WSL2 bind-mount fix) ------------------
+      # inotify events do NOT propagate through Docker Desktop's WSL2 layer.
+      # These env vars force chokidar (used by both Vite and Octane --watch)
+      # to poll the filesystem instead of relying on inotify.
+      CHOKIDAR_USEPOLLING: "1"
+      CHOKIDAR_INTERVAL: "300"
     depends_on:
       postgres:
         condition: service_healthy

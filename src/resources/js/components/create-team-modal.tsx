@@ -1,11 +1,9 @@
-import { Form } from '@inertiajs/react';
-import type { PropsWithChildren } from 'react';
-import { useState } from 'react';
+import { useForm } from '@inertiajs/react';
+import { type PropsWithChildren, useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
-    DialogClose,
     DialogContent,
     DialogDescription,
     DialogFooter,
@@ -20,54 +18,57 @@ import { store } from '@/routes/teams';
 export default function CreateTeamModal({ children }: PropsWithChildren) {
     const [open, setOpen] = useState(false);
 
+    const { data, setData, post, processing, errors, reset } = useForm({
+        name: '',
+    });
+
+    const submit = (e: React.FormEvent) => {
+        e.preventDefault();
+        post(store(), {
+            onSuccess: () => {
+                reset();
+                setOpen(false);
+            },
+        });
+    };
+
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>{children}</DialogTrigger>
             <DialogContent>
-                <Form
-                    key={String(open)}
-                    {...store.form()}
-                    className="space-y-6"
-                    onSuccess={() => setOpen(false)}
-                >
-                    {({ errors, processing }) => (
-                        <>
-                            <DialogHeader>
-                                <DialogTitle>Create a new team</DialogTitle>
-                                <DialogDescription>
-                                    Create a new team to collaborate with
-                                    others.
-                                </DialogDescription>
-                            </DialogHeader>
-
-                            <div className="grid gap-2">
-                                <Label htmlFor="name">Team name</Label>
-                                <Input
-                                    id="name"
-                                    name="name"
-                                    data-test="create-team-name"
-                                    placeholder="My team"
-                                    required
-                                />
-                                <InputError message={errors.name} />
-                            </div>
-
-                            <DialogFooter className="gap-2">
-                                <DialogClose asChild>
-                                    <Button variant="secondary">Cancel</Button>
-                                </DialogClose>
-
-                                <Button
-                                    type="submit"
-                                    data-test="create-team-submit"
-                                    disabled={processing}
-                                >
-                                    Create team
-                                </Button>
-                            </DialogFooter>
-                        </>
-                    )}
-                </Form>
+                <DialogHeader>
+                    <DialogTitle>Create New Team</DialogTitle>
+                    <DialogDescription>
+                        Create a new team to collaborate with others.
+                    </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={submit}>
+                    <div className="space-y-4 py-2">
+                        <div className="space-y-2">
+                            <Label htmlFor="team-name">Team Name</Label>
+                            <Input
+                                id="team-name"
+                                value={data.name}
+                                onChange={(e) => setData('name', e.target.value)}
+                                placeholder="My Team"
+                                autoFocus
+                            />
+                            <InputError message={errors.name} />
+                        </div>
+                    </div>
+                    <DialogFooter className="mt-4">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button type="submit" disabled={processing}>
+                            Create Team
+                        </Button>
+                    </DialogFooter>
+                </form>
             </DialogContent>
         </Dialog>
     );

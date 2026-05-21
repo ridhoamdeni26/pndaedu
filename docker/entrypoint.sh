@@ -43,12 +43,12 @@ print_banner() {
     ║     |  __/ (_| | | | | (_| | (_| | |__| (_| | |_| |              ║
     ║     |_|   \__,_|_| |_|\__,_|\__,_|_____\__,_|\__,_|              ║
     ║                                                                  ║
-    ║              Laravel + Inertia + React  ·  DEV STACK             ║
+    ║         Laravel + Inertia + React · Octane FrankenPHP            ║
     ║                                                                  ║
     ╚══════════════════════════════════════════════════════════════════╝
 EOF
     echo -e "${C_RESET}"
-    echo -e "    ${C_DIM}Powered by Docker · PHP 8.3 · Node 22 · Postgres · Redis${C_RESET}"
+    echo -e "    ${C_DIM}Powered by Docker · FrankenPHP · PHP 8.3 · Node 22 · Postgres · Redis${C_RESET}"
     echo ""
 }
 
@@ -271,18 +271,29 @@ fi
 section_end
 
 section "10/12  Database migrations"
-if [ "$DB_CONNECTION" != "sqlite" ]; then
-    spin "Running migrations (php artisan migrate --force)" php artisan migrate --force --no-interaction
-else
-    spin "Running migrations on sqlite" php artisan migrate --force --no-interaction
+# Disable set -e for this block — migrate exits non-zero on real failures,
+# and we want the container to survive so the dev can inspect the error.
+set +e
+php artisan migrate --force --no-interaction
+_migrate_rc=$?
+set -e
+if [ "$_migrate_rc" -ne 0 ]; then
+    warn "Migration failed (exit $_migrate_rc) — app will still start for debugging."
+    warn "Fix the issue, then run:"
+    warn "  docker compose exec app php artisan migrate --force"
 fi
 section_end
 
-section "11/12  Clearing caches"
+section "11/12  Clearing caches & generating assets"
 spin "config:clear"  php artisan config:clear
 spin "cache:clear"   php artisan cache:clear
 spin "route:clear"   php artisan route:clear
 spin "view:clear"    php artisan view:clear
+if php artisan list --no-ansi 2>/dev/null | grep -q "wayfinder:generate"; then
+    spin "Generating Wayfinder TypeScript files" php artisan wayfinder:generate --with-form
+else
+    note "wayfinder:generate not available — skipping"
+fi
 section_end
 
 section "12/12  Permissions"
@@ -295,12 +306,16 @@ section_end
 #  LAUNCH
 # =============================================================================
 echo ""
+APP_PORT_V="${APP_PORT:-80}"
+VITE_PORT_V="${VITE_PORT:-5173}"
+APP_URL_V="${APP_URL:-http://pandaeducation.test}"
+
 echo -e "${C_GREEN}${C_BOLD}  ════════════════  ALL CHECKS PASSED  ════════════════${C_RESET}"
 echo ""
-echo -e "  ${ARROW} Laravel  ${C_BOLD}http://localhost:8000${C_RESET}"
-echo -e "  ${ARROW} Vite HMR ${C_BOLD}http://localhost:5173${C_RESET}"
-echo -e "  ${ARROW} Postgres ${C_BOLD}localhost:5432${C_RESET}  ${C_DIM}(host)${C_RESET}"
-echo -e "  ${ARROW} Redis    ${C_BOLD}localhost:6379${C_RESET}  ${C_DIM}(host)${C_RESET}"
+echo -e "  ${ARROW} Laravel  ${C_BOLD}${C_CYAN}${APP_URL_V}${C_RESET}  ${C_DIM}(Octane FrankenPHP)${C_RESET}"
+echo -e "  ${ARROW} Vite HMR ${C_BOLD}http://localhost:${VITE_PORT_V}${C_RESET}"
+echo -e "  ${ARROW} Postgres ${C_BOLD}localhost:5432${C_RESET}  ${C_DIM}(host port)${C_RESET}"
+echo -e "  ${ARROW} Redis    ${C_BOLD}localhost:6379${C_RESET}  ${C_DIM}(host port)${C_RESET}"
 echo ""
 echo -e "${C_DIM}  Tip: docker compose logs -f app${C_RESET}"
 echo ""
@@ -308,20 +323,20 @@ echo ""
 CMD="${1:-dev}"
 case "$CMD" in
     dev)
-        echo -e "${C_MAGENTA}${C_BOLD}  ▶ Starting dev stack: php artisan serve  +  npm run dev${C_RESET}"
+        echo -e "${C_MAGENTA}${C_BOLD}  ▶ Starting: Octane FrankenPHP (--watch)  +  Vite HMR${C_RESET}"
         echo ""
-        # Use npx concurrently (already in devDependencies) to run both in foreground
-        # so logs from both services interleave and CTRL+C kills everything cleanly.
         exec npx --yes concurrently \
-            --kill-others-on-fail \
             --prefix "[{name}]" \
-            --names "laravel,vite" \
+            --names "octane,vite" \
             --prefix-colors "blue,magenta" \
-            "php artisan serve --host=0.0.0.0 --port=8000" \
+            "php artisan octane:frankenphp --host=0.0.0.0 --port=${APP_PORT_V} --watch" \
             "npm run dev"
         ;;
-    serve)
-        exec php artisan serve --host=0.0.0.0 --port=8000
+    serve|octane)
+        exec php artisan octane:frankenphp \
+            --host=0.0.0.0 \
+            --port="${APP_PORT_V}" \
+            --watch
         ;;
     vite)
         exec npm run dev
@@ -330,7 +345,6 @@ case "$CMD" in
         exec bash
         ;;
     *)
-        # Pass-through: allow `docker compose run app php artisan tinker` etc.
         exec "$@"
         ;;
 esac

@@ -9,9 +9,9 @@
 
 @theme {
     --font-sans:
-        'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
-        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
-        'Noto Color Emoji';
+        'Plus Jakarta Sans', 'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
+        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-hanzi: 'Noto Serif SC', 'Noto Serif', serif;
 
     --radius-lg: var(--radius);
     --radius-md: calc(var(--radius) - 2px);
@@ -140,4 +140,45 @@
     body {
         @apply bg-background text-foreground;
     }
+}
+
+/* ── Subtle dot-grid texture ───────────────────────────────── */
+.dot-grid {
+    background-image: radial-gradient(circle, rgba(180,160,130,0.28) 1px, transparent 1px);
+    background-size: 22px 22px;
+}
+.dark .dot-grid {
+    background-image: radial-gradient(circle, rgba(30,60,100,0.6) 1px, transparent 1px);
+}
+
+/* ── Marquee — infinite horizontal scroll ──────────────────── */
+@keyframes marquee-left {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+}
+@keyframes marquee-right {
+    from { transform: translateX(-50%); }
+    to   { transform: translateX(0); }
+}
+
+/* ── Scrollbar — themed, minimal ───────────────────────────── */
+::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: #d4d4d8;
+    border-radius: 100px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #a1a1aa;
+}
+.dark ::-webkit-scrollbar-thumb {
+    background: #3f3f46;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+    background: #52525b;
 }

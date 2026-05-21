@@ -2,45 +2,30 @@
 
 namespace App\Concerns;
 
-use App\Models\Team;
 use Illuminate\Support\Str;
 
 trait GeneratesUniqueTeamSlugs
 {
-    /**
-     * Generate a unique slug for the team.
-     */
-    protected static function generateUniqueTeamSlug(string $name, ?int $excludeId = null): string
+    protected static function bootGeneratesUniqueTeamSlugs(): void
     {
-        $defaultSlug = Str::slug($name);
+        static::creating(function ($model): void {
+            if (empty($model->slug)) {
+                $model->slug = static::generateUniqueSlug($model->name);
+            }
+        });
+    }
 
-        $query = static::withTrashed()
-            ->where(function ($query) use ($defaultSlug) {
-                $query->where('slug', $defaultSlug)
-                    ->orWhere('slug', 'like', $defaultSlug.'-%');
-            });
+    protected static function generateUniqueSlug(string $name): string
+    {
+        $base = Str::slug($name);
+        $slug = $base;
+        $i    = 1;
 
-        if ($excludeId) {
-            $query->where('id', '!=', $excludeId);
+        while (static::withTrashed()->where('slug', $slug)->exists()) {
+            $slug = "{$base}-{$i}";
+            $i++;
         }
 
-        $existingSlugs = $query->pluck('slug');
-
-        $maxSuffix = $existingSlugs
-            ->map(function (string $slug) use ($defaultSlug): ?int {
-                if ($slug === $defaultSlug) {
-                    return 0;
-                } elseif (preg_match('/^'.preg_quote($defaultSlug, '/').'-(\d+)$/', $slug, $matches)) {
-                    return (int) $matches[1];
-                }
-
-                return null;
-            })
-            ->filter(fn (?int $suffix) => $suffix !== null)
-            ->max() ?? 0;
-
-        return $existingSlugs->isEmpty()
-            ? $defaultSlug
-            : $defaultSlug.'-'.($maxSuffix + 1);
+        return $slug;
     }
 }

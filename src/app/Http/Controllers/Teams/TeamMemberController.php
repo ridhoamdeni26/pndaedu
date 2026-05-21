@@ -2,55 +2,35 @@
 
 namespace App\Http\Controllers\Teams;
 
-use App\Enums\TeamRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Teams\UpdateTeamMemberRequest;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Gate;
-use Inertia\Inertia;
 
 class TeamMemberController extends Controller
 {
-    /**
-     * Update the specified team member's role.
-     */
     public function update(UpdateTeamMemberRequest $request, Team $team, User $user): RedirectResponse
     {
-        Gate::authorize('updateMember', $team);
+        $membership = $team->memberships()->where('user_id', $user->id)->firstOrFail();
+        $membership->update(['role' => $request->validated('role')]);
 
-        $newRole = TeamRole::from($request->validated('role'));
-
-        $team->memberships()
-            ->where('user_id', $user->id)
-            ->firstOrFail()
-            ->update(['role' => $newRole]);
-
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Member role updated.')]);
-
-        return to_route('teams.edit', ['team' => $team->slug]);
+        return back()->with('success', 'Member role updated.');
     }
 
-    /**
-     * Remove the specified team member.
-     */
     public function destroy(Team $team, User $user): RedirectResponse
     {
-        Gate::authorize('removeMember', $team);
+        $this->authorize('removeMember', $team);
 
-        abort_if($team->owner()?->is($user), 403, __('The team owner cannot be removed.'));
+        $team->memberships()->where('user_id', $user->id)->delete();
 
-        $team->memberships()
-            ->where('user_id', $user->id)
-            ->delete();
-
-        if ($user->isCurrentTeam($team)) {
-            $user->switchTeam($user->personalTeam());
+        if ($user->current_team_id === $team->id) {
+            $fallback = $user->teams()->first();
+            $fallback
+                ? $user->switchTeam($fallback)
+                : $user->update(['current_team_id' => null]);
         }
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => __('Member removed.')]);
-
-        return to_route('teams.edit', ['team' => $team->slug]);
+        return back()->with('success', 'Member removed from team.');
     }
 }

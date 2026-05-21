@@ -1,0 +1,14 @@
+export { Counter } from './counter';
+export { ConsultModal } from './consult-modal';
+export { ClassCard } from './class-card';
+export { CartDrawer } from './cart-drawer';
+export { HeroSection } from './hero-section';
+export { StatsSection } from './stats-section';
+export { KidsBanner } from './kids-banner';
+export { TrendingSection } from './trending-section';
+export { WhySection } from './why-section';
+export { TestimonialsSection } from './testimonials-section';
+export { PartnersMarquee } from './partners-marquee';
+export { ReferralSection } from './referral-section';
+export { FaqSection } from './faq-section';
+export { FinalCta } from './final-cta';

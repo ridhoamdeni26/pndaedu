@@ -1,15 +1,15 @@
-import { Form } from '@inertiajs/react';
-import { useState } from 'react';
+import { useForm } from '@inertiajs/react';
+import { type PropsWithChildren, useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
-    DialogClose,
     DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
+    DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,110 +20,92 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { store as storeInvitation } from '@/routes/teams/invitations';
-import type { RoleOption, Team } from '@/types';
+import { store } from '@/routes/teams/invitations';
+import type { Team } from '@/types';
 
-type Props = {
-    team: Team;
-    availableRoles: RoleOption[];
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-};
+const ROLES = [
+    { value: 'admin', label: 'Admin' },
+    { value: 'member', label: 'Member' },
+] as const;
 
 export default function InviteMemberModal({
     team,
-    availableRoles,
-    open,
-    onOpenChange,
-}: Props) {
-    const [inviteRole, setInviteRole] = useState<RoleOption['value']>('member');
+    children,
+}: PropsWithChildren<{ team: Team }>) {
+    const [open, setOpen] = useState(false);
 
-    const handleOpenChange = (nextOpen: boolean) => {
-        onOpenChange(nextOpen);
+    const { data, setData, post, processing, errors, reset } = useForm({
+        email: '',
+        role: 'member' as string,
+    });
 
-        if (!nextOpen) {
-            setInviteRole('member');
-        }
+    const submit = (e: React.FormEvent) => {
+        e.preventDefault();
+        post(store(team.slug), {
+            onSuccess: () => {
+                reset();
+                setOpen(false);
+            },
+        });
     };
 
     return (
-        <Dialog open={open} onOpenChange={handleOpenChange}>
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>{children}</DialogTrigger>
             <DialogContent>
-                <Form
-                    key={String(open)}
-                    {...storeInvitation.form(team.slug)}
-                    className="space-y-6"
-                    onSuccess={() => onOpenChange(false)}
-                >
-                    {({ errors, processing }) => (
-                        <>
-                            <DialogHeader>
-                                <DialogTitle>Invite a team member</DialogTitle>
-                                <DialogDescription>
-                                    Send an invitation to join this team.
-                                </DialogDescription>
-                            </DialogHeader>
-
-                            <div className="grid gap-4">
-                                <div className="grid gap-2">
-                                    <Label htmlFor="email">Email address</Label>
-                                    <Input
-                                        id="email"
-                                        name="email"
-                                        type="email"
-                                        data-test="invite-email"
-                                        placeholder="colleague@example.com"
-                                        required
-                                    />
-                                    <InputError message={errors.email} />
-                                </div>
-
-                                <div className="grid gap-2">
-                                    <Label htmlFor="role">Role</Label>
-                                    <Select
-                                        name="role"
-                                        data-test="invite-role"
-                                        value={inviteRole}
-                                        onValueChange={(value) =>
-                                            setInviteRole(
-                                                value as RoleOption['value'],
-                                            )
-                                        }
-                                    >
-                                        <SelectTrigger className="w-full">
-                                            <SelectValue placeholder="Select a role" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {availableRoles.map((role) => (
-                                                <SelectItem
-                                                    key={role.value}
-                                                    value={role.value}
-                                                >
-                                                    {role.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <InputError message={errors.role} />
-                                </div>
-                            </div>
-
-                            <DialogFooter className="gap-2">
-                                <DialogClose asChild>
-                                    <Button variant="secondary">Cancel</Button>
-                                </DialogClose>
-
-                                <Button
-                                    type="submit"
-                                    data-test="invite-submit"
-                                    disabled={processing}
-                                >
-                                    Send invitation
-                                </Button>
-                            </DialogFooter>
-                        </>
-                    )}
-                </Form>
+                <DialogHeader>
+                    <DialogTitle>Invite Team Member</DialogTitle>
+                    <DialogDescription>
+                        Send an invitation to join <strong>{team.name}</strong>.
+                    </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={submit}>
+                    <div className="space-y-4 py-2">
+                        <div className="space-y-2">
+                            <Label htmlFor="invite-email">Email Address</Label>
+                            <Input
+                                id="invite-email"
+                                type="email"
+                                value={data.email}
+                                onChange={(e) => setData('email', e.target.value)}
+                                placeholder="colleague@example.com"
+                                autoFocus
+                            />
+                            <InputError message={errors.email} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="invite-role">Role</Label>
+                            <Select
+                                value={data.role}
+                                onValueChange={(v) => setData('role', v)}
+                            >
+                                <SelectTrigger id="invite-role">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {ROLES.map((r) => (
+                                        <SelectItem key={r.value} value={r.value}>
+                                            {r.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <InputError message={errors.role} />
+                        </div>
+                    </div>
+                    <DialogFooter className="mt-4">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button type="submit" disabled={processing}>
+                            Send Invitation
+                        </Button>
+                    </DialogFooter>
+                </form>
             </DialogContent>
         </Dialog>
     );

@@ -23,6 +23,6 @@ class RegisterResponse implements RegisterResponseContract
 
         return $request->wantsJson()
             ? new JsonResponse(['two_factor' => false], 201)
-            : redirect()->intended("/{$team->slug}".Fortify::redirects('register'));
+            : redirect()->intended("/{$team->slug}" . Fortify::redirects('register'));
     }
 }

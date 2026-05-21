@@ -7,6 +7,9 @@ import { bunny } from 'laravel-vite-plugin/fonts';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+    optimizeDeps: {
+        include: ['framer-motion'],
+    },
     server: {
         host: '0.0.0.0',
         port: 5173,
@@ -16,6 +19,14 @@ export default defineConfig({
         hmr: {
             host: 'localhost',
             port: 5173,
+        },
+        // Windows + Docker Desktop (WSL2) does not propagate inotify events
+        // across the bind-mount boundary, so chokidar never fires.
+        // Polling detects changes by comparing file mtimes every `interval` ms.
+        watch: {
+            usePolling: true,
+            interval: 300,
+            ignored: ['**/storage/**', '**/bootstrap/cache/**', '**/vendor/**'],
         },
     },
     plugins: [

@@ -1,100 +1,57 @@
-import { Form } from '@inertiajs/react';
-import { useState } from 'react';
-import InputError from '@/components/input-error';
+import { useForm } from '@inertiajs/react';
+import { type PropsWithChildren, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
-    DialogClose,
     DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
+    DialogTrigger,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { destroy } from '@/routes/teams';
 import type { Team } from '@/types';
 
-type Props = {
-    team: Team;
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-};
+export default function DeleteTeamModal({
+    team,
+    children,
+}: PropsWithChildren<{ team: Team }>) {
+    const [open, setOpen] = useState(false);
+    const { delete: del, processing } = useForm({});
 
-export default function DeleteTeamModal({ team, open, onOpenChange }: Props) {
-    const [confirmationName, setConfirmationName] = useState('');
-
-    const canDeleteTeam = confirmationName === team.name;
-
-    const handleOpenChange = (nextOpen: boolean) => {
-        onOpenChange(nextOpen);
-
-        if (!nextOpen) {
-            setConfirmationName('');
-        }
+    const submit = (e: React.FormEvent) => {
+        e.preventDefault();
+        del(destroy(team.slug), {
+            onSuccess: () => setOpen(false),
+        });
     };
 
     return (
-        <Dialog open={open} onOpenChange={handleOpenChange}>
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>{children}</DialogTrigger>
             <DialogContent>
-                <Form
-                    key={String(open)}
-                    {...destroy.form(team.slug)}
-                    className="space-y-6"
-                    onSuccess={() => handleOpenChange(false)}
-                >
-                    {({ errors, processing }) => (
-                        <>
-                            <DialogHeader>
-                                <DialogTitle>Are you sure?</DialogTitle>
-                                <DialogDescription>
-                                    This action cannot be undone. This will
-                                    permanently delete the team{' '}
-                                    <strong>"{team.name}"</strong>.
-                                </DialogDescription>
-                            </DialogHeader>
-
-                            <div className="space-y-4 py-4">
-                                <div className="grid gap-2">
-                                    <Label htmlFor="confirmation-name">
-                                        Type <strong>"{team.name}"</strong> to
-                                        confirm
-                                    </Label>
-                                    <Input
-                                        id="confirmation-name"
-                                        name="name"
-                                        data-test="delete-team-name"
-                                        value={confirmationName}
-                                        onChange={(event) =>
-                                            setConfirmationName(
-                                                event.target.value,
-                                            )
-                                        }
-                                        placeholder="Enter team name"
-                                        autoComplete="off"
-                                    />
-                                    <InputError message={errors.name} />
-                                </div>
-                            </div>
-
-                            <DialogFooter className="gap-2">
-                                <DialogClose asChild>
-                                    <Button variant="secondary">Cancel</Button>
-                                </DialogClose>
-
-                                <Button
-                                    variant="destructive"
-                                    type="submit"
-                                    data-test="delete-team-confirm"
-                                    disabled={!canDeleteTeam || processing}
-                                >
-                                    Delete team
-                                </Button>
-                            </DialogFooter>
-                        </>
-                    )}
-                </Form>
+                <DialogHeader>
+                    <DialogTitle>Delete Team</DialogTitle>
+                    <DialogDescription>
+                        Are you sure you want to delete <strong>{team.name}</strong>?
+                        This action cannot be undone and will remove all members.
+                    </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={submit}>
+                    <DialogFooter className="mt-4">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button type="submit" variant="destructive" disabled={processing}>
+                            Delete Team
+                        </Button>
+                    </DialogFooter>
+                </form>
             </DialogContent>
         </Dialog>
     );

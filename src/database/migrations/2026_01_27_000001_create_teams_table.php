@@ -6,50 +6,41 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('teams', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('slug')->unique();
+            $table->uuid('id')->primary();
+            $table->string('name', 100);
+            $table->string('slug', 100)->unique();
             $table->boolean('is_personal')->default(false);
             $table->timestamps();
             $table->softDeletes();
         });
 
-        Schema::create('team_members', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('team_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->string('role');
+        Schema::create('memberships', function (Blueprint $table) {
+            $table->uuid('id')->primary();
+            $table->foreignUuid('team_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('user_id')->constrained()->cascadeOnDelete();
+            $table->string('role', 20)->default('member');
             $table->timestamps();
-
             $table->unique(['team_id', 'user_id']);
         });
 
         Schema::create('team_invitations', function (Blueprint $table) {
-            $table->id();
-            $table->string('code', 64)->unique();
-            $table->foreignId('team_id')->constrained()->cascadeOnDelete();
+            $table->uuid('id')->primary();
+            $table->string('code', 32)->unique();
+            $table->foreignUuid('team_id')->constrained()->cascadeOnDelete();
             $table->string('email');
-            $table->string('role');
-            $table->foreignId('invited_by')->constrained('users')->cascadeOnDelete();
-            $table->timestamp('expires_at')->nullable();
-            $table->timestamp('accepted_at')->nullable();
+            $table->string('role', 20)->default('member');
             $table->timestamps();
+            $table->unique(['team_id', 'email']);
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('team_invitations');
-        Schema::dropIfExists('team_members');
+        Schema::dropIfExists('memberships');
         Schema::dropIfExists('teams');
     }
 };

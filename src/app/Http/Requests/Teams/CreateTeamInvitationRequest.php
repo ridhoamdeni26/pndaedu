@@ -4,22 +4,21 @@ namespace App\Http\Requests\Teams;
 
 use App\Enums\TeamRole;
 use App\Rules\UniqueTeamInvitation;
-use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Enum;
 
 class CreateTeamInvitationRequest extends FormRequest
 {
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, ValidationRule|array<mixed>|string>
-     */
+    public function authorize(): bool
+    {
+        return $this->user()->can('inviteMember', $this->route('team'));
+    }
+
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email', 'max:255', new UniqueTeamInvitation($this->route('team'))],
-            'role' => ['required', 'string', Rule::enum(TeamRole::class)],
+            'email' => ['required', 'email', new UniqueTeamInvitation($this->route('team'))],
+            'role'  => ['required', new Enum(TeamRole::class)],
         ];
     }
 }

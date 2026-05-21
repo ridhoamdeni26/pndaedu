@@ -31,7 +31,6 @@ export function TeamSwitcher({ inHeader = false }: TeamSwitcherProps) {
             onFinish: () => {
                 if (!previousTeamSlug || typeof window === 'undefined') {
                     router.reload();
-
                     return;
                 }
 
@@ -42,7 +41,6 @@ export function TeamSwitcher({ inHeader = false }: TeamSwitcherProps) {
                     router.visit(currentUrl.replace(segment, `/${team.slug}`), {
                         replace: true,
                     });
-
                     return;
                 }
 
@@ -124,9 +122,7 @@ export function TeamSwitcher({ inHeader = false }: TeamSwitcherProps) {
                         {currentTeam?.id === team.id && (
                             <Check
                                 className={
-                                    inHeader
-                                        ? 'ml-auto size-4'
-                                        : 'ml-auto h-4 w-4'
+                                    inHeader ? 'ml-auto size-4' : 'ml-auto h-4 w-4'
                                 }
                             />
                         )}

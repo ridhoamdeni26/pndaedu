@@ -1,70 +1,58 @@
-import { router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useForm } from '@inertiajs/react';
+import { type PropsWithChildren, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
-    DialogClose,
     DialogContent,
     DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
+    DialogTrigger,
 } from '@/components/ui/dialog';
-import { destroy as destroyMember } from '@/routes/teams/members';
+import { destroy } from '@/routes/teams/members';
 import type { Team, TeamMember } from '@/types';
-
-type Props = {
-    team: Team;
-    member: TeamMember | null;
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-};
 
 export default function RemoveMemberModal({
     team,
     member,
-    open,
-    onOpenChange,
-}: Props) {
-    const [processing, setProcessing] = useState(false);
+    children,
+}: PropsWithChildren<{ team: Team; member: TeamMember }>) {
+    const [open, setOpen] = useState(false);
+    const { delete: del, processing } = useForm({});
 
-    const removeMember = () => {
-        if (!member) {
-            return;
-        }
-
-        router.visit(destroyMember([team.slug, member.id]), {
-            onStart: () => setProcessing(true),
-            onFinish: () => setProcessing(false),
-            onSuccess: () => onOpenChange(false),
+    const submit = (e: React.FormEvent) => {
+        e.preventDefault();
+        del(destroy(team.slug, member.id), {
+            onSuccess: () => setOpen(false),
         });
     };
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>{children}</DialogTrigger>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Remove team member</DialogTitle>
+                    <DialogTitle>Remove Member</DialogTitle>
                     <DialogDescription>
-                        Are you sure you want to remove{' '}
-                        <strong>{member?.name}</strong> from this team?
+                        Remove <strong>{member.name}</strong> from{' '}
+                        <strong>{team.name}</strong>?
                     </DialogDescription>
                 </DialogHeader>
-
-                <DialogFooter className="gap-2">
-                    <DialogClose asChild>
-                        <Button variant="secondary">Cancel</Button>
-                    </DialogClose>
-
-                    <Button
-                        variant="destructive"
-                        data-test="remove-member-confirm"
-                        disabled={processing}
-                        onClick={removeMember}
-                    >
-                        Remove member
-                    </Button>
-                </DialogFooter>
+                <form onSubmit={submit}>
+                    <DialogFooter className="mt-4">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button type="submit" variant="destructive" disabled={processing}>
+                            Remove
+                        </Button>
+                    </DialogFooter>
+                </form>
             </DialogContent>
         </Dialog>
     );
